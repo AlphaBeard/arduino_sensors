@@ -34,8 +34,9 @@ dht DHT;
 #define dhtPower 5     // Data Digital Pin 3
 
 // Define wetness sensor FC-37 with potentiometer
-#define leafPin 8    // Data Digital Pin 8
+#define leafPin A0    // THIS PIN SHOULD BE AN ANALOG PIN
 #define leafPower 9  // Power Digital Pin 9
+#define WETNESS_THRESHOLD 200 // Arbitrary value for what we consider wet on the rain reader
 
 //Global variables
 volatile bool g_timerFlag = false; //initialize timer Flag to value of false.  Value of true means timer has dinged.
@@ -85,13 +86,16 @@ void setup() {
   
   pinMode(leafPower,OUTPUT);    // FC-37  power
   pinMode(dhtPower, OUTPUT);    // DHT-11 power
+  pinMode(leafPin, INPUT); //Set Wetness Sensor to Input for Analog pin A0
   digitalWrite(leafPower, LOW); 
   digitalWrite(dhtPower, LOW); 
 
 // inserted SD card write here 
   pinMode(10, OUTPUT);  // default chip select pin is set to output, even if you don't use it: requires defining const int chipSelect = 10;
 
- while (!Serial);
+// Not Sure What this does, I don't imagine it ever runs. Serial will never be NULL.  
+/*
+  while (!Serial);
 
   Serial.print("Initializing SD card...");
 
@@ -109,6 +113,7 @@ void setup() {
   Serial.println("initialization done.");
 
 }
+*/
   
 void loop() {
  // if the loop is running, it's because we're awake.  This is because an interrupt fired
@@ -154,10 +159,10 @@ now = rtc.now();
   
 // Get data from DHT-11 using dhtRead()function. See lines at end for dhtRead() function. 
  int dhtData = dhtRead();    // Read DHT-11 sensor for temperature and relative humidity
- int val = readSensor(); // Take leaf wetness reading from the FC-37
+ int wetnessValue = readSensor(); // Take leaf wetness reading from the FC-37
  
 // Determine categorical status of digital logging leaf wetness sensor FC-37 
-  if (val) {
+  if (wetnessValue < WET_THRESHOLD) {
     Serial.print("Dry");
     logfile.print("Dry");
     logfile.print(", "); 
@@ -227,7 +232,7 @@ void wakeUp(){ // Interrupt service request for when wakeup timer fires
   detachInterrupt(0); //Removes the interrupt from pin 2;
 }
 
-void countISR(){ // Interrupt service request for when counter pulses
+void countISR(){ // Interrupt service routine for when counter pulses
   g_count ++; //increment the count
   //note that this interrupt will wake up the arduino.  We rely on the main loop to put it back to sleep.
 }
@@ -235,7 +240,7 @@ void countISR(){ // Interrupt service request for when counter pulses
 int readSensor() { //  Function to wake-up leaf wetness sensor and return digital value (0 = wet, 1 = dry). Reduces corrosion build-up
   digitalWrite(leafPower, HIGH);  // Turn the sensor ON
   delay(10);              // Allow power to settle
-  int val = digitalRead(leafPin); // Read the sensor output
+  int val = analogRead(leafPin); // Read the sensor output, ANALOG
   digitalWrite(leafPower, LOW);   // Turn the sensor OFF
   return val;             // Return the value
 }
@@ -246,6 +251,4 @@ int dhtRead() { //  Function to return DHT-11 Temperature & RH digital values.
   int dhtData = DHT.read11(dhtPin); // Read the sensor output
   digitalWrite(dhtPower, LOW);      // Turn the sensor OFF
   return dhtData;                   // Return the values
-  return DHT.temperature; 
-  return DHT.humidity; 
 }
